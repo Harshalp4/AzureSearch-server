@@ -29,10 +29,10 @@ namespace AspNetCoreAzureSearch
 
             var options = new SearchOptions
             {
-                Skip = page * pageSize,
-                Size = pageSize,
-                IncludeTotalCount = true,
-                QueryType = SearchQueryType.Full
+                //Skip = page * pageSize,
+                //Size = pageSize,
+                //IncludeTotalCount = true,
+                //QueryType = SearchQueryType.Full
             }; // options.Select.Add("Name"); // add this explicitly if all fields are not required
 
             model.PersonCities = await _searchClient.SearchAsync<PersonCity>(model.SearchText, options).ConfigureAwait(false);

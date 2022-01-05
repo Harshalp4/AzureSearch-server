@@ -24,6 +24,10 @@ namespace CognitiveSearch.UI
         public string SearchId { get; set; }
         public string IdField { get; set; }
         public bool IsPathBase64Encoded { get; set; }
+
+        public List<SearchResult<SearchDocument>> Resultslist { get; set; }
+
+        public List<Documentlist> DocumnetList { get; set; }
     }
 
     public class Facet
@@ -36,6 +40,22 @@ namespace CognitiveSearch.UI
     {
         public string value { get; set; }
         public long? count { get; set; }
+    }
+
+    public class scorePercentile
+    {
+        public double percent { get; set; }
+
+        public double score { get; set; }
+    }
+
+    public class Documentlist
+    {
+        public double percent { get; set; }
+
+        public double score { get; set; }
+
+        public string name { get; set; }
     }
 
 }

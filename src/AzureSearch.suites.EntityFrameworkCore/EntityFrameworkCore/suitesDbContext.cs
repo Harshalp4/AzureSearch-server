@@ -14,5 +14,7 @@ namespace AzureSearch.suites.EntityFrameworkCore
             : base(options)
         {
         }
+
+        public virtual DbSet<sampleEntity> sampleEntitys { get; set; }
     }
 }

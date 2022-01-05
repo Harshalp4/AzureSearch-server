@@ -42,10 +42,10 @@ namespace AzureSearch.suites.AzureSearch
 
             var data = indexClient.Documents.Search<IndexProduct>(phrase, new SearchParameters()
             {
-                SearchFields = new List<string>(columns),
-                SearchMode = SearchMode.Any,
+                //SearchFields = new List<string>(columns),
+                //SearchMode = SearchMode.Any,
                 IncludeTotalResultCount = true,
-                QueryType = lucene ? QueryType.Full : QueryType.Simple, //For Lucene Syntax,
+                //QueryType = lucene ? QueryType.Full : QueryType.Simple, //For Lucene Syntax,
                 Top = 1000
             });
 

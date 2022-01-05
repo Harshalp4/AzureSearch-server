@@ -54,14 +54,15 @@ namespace CognitiveSearch.UI
         private static string defaultContainerUriValue = "https://{storage-account-name}.blob.core.windows.net/{container-name}";
 
 
-        public DocumentSearchClient(IConfiguration configuration)
+        public DocumentSearchClient(IConfiguration configuration,string indexname)
         {
             try
             {
                 _configuration = configuration;
                 searchServiceName = configuration.GetSection("SearchServiceName")?.Value;
                 apiKey = configuration.GetSection("SearchApiKey")?.Value;
-                IndexName = configuration.GetSection("SearchIndexName")?.Value;
+                IndexName = !string.IsNullOrEmpty(indexname) ? indexname : configuration.GetSection("SearchIndexName")?.Value;
+                //IndexName =  configuration.GetSection("SearchIndexName")?.Value;
                 IndexerName = configuration.GetSection("SearchIndexerName")?.Value;
                 idField = configuration.GetSection("KeyField")?.Value;
                 telemetryClient.InstrumentationKey = configuration.GetSection("InstrumentationKey")?.Value;
@@ -87,8 +88,16 @@ namespace CognitiveSearch.UI
                 throw new ArgumentException(e.Message.ToString());
             }
         }
-
-        public SearchResults<SearchDocument> Search(string searchText, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="searchText"></param>
+        /// <param name="searchFacets"></param>
+        /// <param name="selectFilter"></param>
+        /// <param name="currentPage"></param>
+        /// <param name="polygonString"></param>
+        /// <returns></returns>
+        public SearchResults<SearchDocument> Search(string searchText,double accuracy, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null)
         {
             try
             {
@@ -102,6 +111,7 @@ namespace CognitiveSearch.UI
 
                 Response<SearchResults<SearchDocument>> response = _searchClient.Search<SearchDocument>(searchText, options);
 
+
                 // logging the search id for app insights
                 if (!string.IsNullOrEmpty(telemetryClient.InstrumentationKey))
                 {
@@ -113,7 +123,13 @@ namespace CognitiveSearch.UI
                     }
 
                     SearchId = searchId;
-                }
+                }             
+
+                //var findscores = scrlist.Where(s => s.percent >= accuracy).Select(s => s.score);
+                //var filterResults = response.Value.GetResults().Where(s => findscores.Contains(s.Score.Value));
+
+                //return filterResults;
+                    //(SearchResults<SearchDocument>)response.Value.GetResults().Where(s => findscores.Contains(s.Score.Value));
 
                 return response.Value;
             }
@@ -128,13 +144,15 @@ namespace CognitiveSearch.UI
         {
             Azure.Search.Documents.SearchOptions options = new Azure.Search.Documents.SearchOptions()
             {
-                SearchMode = SearchMode.All,
-                Size = 10,
-                Skip = (currentPage - 1) * 10,
+                //SearchMode = SearchMode.All,
+                Size = 10000,
+                //Skip = (currentPage - 1) * 10,
                 IncludeTotalCount = true,
-                QueryType = SearchQueryType.Full,
+                //QueryType = SearchQueryType.Full,
                 HighlightPreTag = "<b>",
-                HighlightPostTag = "</b>"
+                HighlightPostTag = "</b>",
+                ScoringStatistics = ScoringStatistics.Local,
+               
             };
 
             foreach (string s in selectFilter)
@@ -317,8 +335,37 @@ namespace CognitiveSearch.UI
             }
             return null;
         }
+        public List<scorePercentile> percentile(List<double?> arr, int n)
+        {
+            List<scorePercentile> scores = new List<scorePercentile>();
+            int i, count;
+            double percent;
+            // Start of the loop that calculates percentile
+            for (i = 0; i < n; i++)
+            {
+                count = 0;
+                for (int j = 0; j < n; j++)
+                {
 
-        public DocumentResult GetDocuments(string q, SearchFacet[] searchFacets, int currentPage, string polygonString = null)
+                    // Comparing the marks of student i
+                    // with all other students
+                    if (arr[i] > arr[j])
+                    {
+                        count++;
+                    }
+                }
+                percent = (count * 100) / (n - 1);
+
+                scores.Add(new scorePercentile { percent = percent, score = arr[i].Value });
+
+
+
+                //Console.Write("\nPercentile of Student "
+                //+ (i + 1) + " = " + percent);
+            }
+            return scores.ToList();
+        }
+        public DocumentResult GetDocuments(string q,int accuracy, SearchFacet[] searchFacets, int currentPage, string polygonString = null)
         {
             GetContainerSasUris();
 
@@ -329,7 +376,7 @@ namespace CognitiveSearch.UI
                 q = q.Replace("?", "");
             }
 
-            var response = Search(q, searchFacets, selectFilter, currentPage, polygonString);
+            var response = Search(q, accuracy,searchFacets, selectFilter, currentPage, polygonString);
             var searchId = GetSearchId().ToString();
             var facetResults = new List<Facet>();
             var tagsResults = new List<object>();
@@ -359,6 +406,9 @@ namespace CognitiveSearch.UI
                     });
                 }
             }
+            //var scores = response.GetResults().Select(s => s.Score).Distinct().ToList();
+            //var scrlist = percentile(scores, scores.Count());
+            //var findbyaccuracy = scrlist.Where(s => s.percent >= accuracy).Select(s => s.score);
 
             var result = new DocumentResult
             {
@@ -374,9 +424,20 @@ namespace CognitiveSearch.UI
 
             string json = JsonConvert.SerializeObject(facetResults);
 
+           
+
+            
+
+
+
+            //var filtered = result.Results.Where(w => findbyaccuracy.Contains(w.Score.Value));
+            //result.Results = filtered;
 
             return result;
         }
+
+
+       
 
         /// <summary>
         /// Initiates a run of the search indexer.

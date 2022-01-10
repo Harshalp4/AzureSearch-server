@@ -238,6 +238,7 @@ namespace AzureSearch.suites.AzureSearch
         /// <returns></returns>
         public List<string> Suggest(string term, bool fuzzy = true)
         {
+            InitializeDocSearch("itsname-suggester-index");
             // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
             var response = _docSearch.Autocomplete(term, fuzzy);
 

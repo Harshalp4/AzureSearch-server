@@ -11,6 +11,7 @@ using Azure.Search.Documents.Models;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
+using AzureSearch.suites.AzureSearch;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -97,11 +98,11 @@ namespace CognitiveSearch.UI
         /// <param name="currentPage"></param>
         /// <param name="polygonString"></param>
         /// <returns></returns>
-        public SearchResults<SearchDocument> Search(string searchText,double accuracy, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null)
+        public SearchResults<SearchDocument> Search(string searchText,double accuracy, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null,bool isProperty=false)
         {
             try
             {
-                Azure.Search.Documents.SearchOptions options = GenerateSearchOptions(searchFacets, selectFilter, currentPage, polygonString);
+                Azure.Search.Documents.SearchOptions options = GenerateSearchOptions(searchFacets, selectFilter, currentPage, polygonString, isProperty);
 
                 //if (!string.IsNullOrEmpty(telemetryClient.InstrumentationKey))
                 //{
@@ -110,6 +111,8 @@ namespace CognitiveSearch.UI
                 //}
 
                 Response<SearchResults<SearchDocument>> response = _searchClient.Search<SearchDocument>(searchText, options);
+
+                
 
 
                 // logging the search id for app insights
@@ -140,7 +143,8 @@ namespace CognitiveSearch.UI
             return null;
         }
 
-        public Azure.Search.Documents.SearchOptions GenerateSearchOptions(SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null)
+        public Azure.Search.Documents.SearchOptions GenerateSearchOptions(SearchFacet[] searchFacets = null, string[] selectFilter = null, 
+            int currentPage = 1, string polygonString = null,bool isProperty=false)
         {
             Azure.Search.Documents.SearchOptions options = new Azure.Search.Documents.SearchOptions()
             {
@@ -206,7 +210,9 @@ namespace CognitiveSearch.UI
                     }
                 }
             }
-
+            if (isProperty)
+                options.Filter = "Type eq 'PROPERTY'";
+            else
             options.Filter = filter;
 
             // Add Filter based on geographic polygon if it is set.
@@ -365,7 +371,7 @@ namespace CognitiveSearch.UI
             }
             return scores.ToList();
         }
-        public DocumentResult GetDocuments(string q,int accuracy, SearchFacet[] searchFacets, int currentPage, string polygonString = null)
+        public DocumentResult GetDocuments(string q,int accuracy, SearchFacet[] searchFacets, int currentPage, string polygonString = null,bool isProperty=false)
         {
             GetContainerSasUris();
 
@@ -376,7 +382,7 @@ namespace CognitiveSearch.UI
                 q = q.Replace("?", "");
             }
 
-            var response = Search(q, accuracy,searchFacets, selectFilter, currentPage, polygonString);
+            var response = Search(q, accuracy,searchFacets, selectFilter, currentPage, polygonString,isProperty);
             var searchId = GetSearchId().ToString();
             var facetResults = new List<Facet>();
             var tagsResults = new List<object>();

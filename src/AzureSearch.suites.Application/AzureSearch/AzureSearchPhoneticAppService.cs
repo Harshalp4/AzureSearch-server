@@ -72,7 +72,7 @@ namespace AzureSearch.suites.AzureSearch
 
             var definition = new Index()
             {
-                Name = _configuration.GetSection("AzureSearchIndexName")?.Value, // Config.GetValue<string>("AzureSearch:AzureSearchIndexName"),
+                Name = _configuration.GetSection("EntitySearchIndexName")?.Value, // Config.GetValue<string>("AzureSearch:AzureSearchIndexName"),
                 Fields = FieldBuilder.BuildForType<IndexProduct>(),
                 Analyzers = new List<Analyzer> { phoneticAnalizer },
             };

@@ -29,4 +29,7 @@
     <PackageReference Include="Abp.ZeroCore" Version="6.5.0" />
     <PackageReference Include="Abp.AspNetCore.SignalR" Version="6.5.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Models\Entities\" />
+  </ItemGroup>
 </Project>

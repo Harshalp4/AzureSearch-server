@@ -1,4 +1,7 @@
-﻿namespace CognitiveSearch.UI.Models
+﻿using AzureSearch.suites.AzureSearch;
+using System.Collections.Generic;
+
+namespace CognitiveSearch.UI.Models
 {
     public class SearchResultViewModel
     {
@@ -17,5 +20,7 @@
         public string indexName { get; set; }
 
         public string[] facetableFields { get; set; }
+
+        public List<EntityDetailsDto> EntityDetails  { get; set; }
     }
 }

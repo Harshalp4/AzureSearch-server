@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using CognitiveSearch.UI.Models;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace AzureSearch.suites.AzureSearch
 {
@@ -250,6 +252,53 @@ namespace AzureSearch.suites.AzureSearch
             public string polygonString { get; set; }
 
             public bool isProperty { get; set; }
+        }
+
+        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)
+        
+        {
+            var connstring = _configuration.GetConnectionString("Default");
+            DataTable dt = new DataTable();
+
+            using (SqlConnection connection = new SqlConnection(connstring))
+            {
+                connection.Open();
+                SqlCommand command = new SqlCommand("getentitydetails", connection);
+                command.CommandType = CommandType.StoredProcedure;
+                SqlParameter param = new SqlParameter();
+                param.ParameterName = "@entity_key";
+                param.Value = entitykey;
+                command.Parameters.Add(param);
+                //rowsAffected = command.ExecuteNonQuery();
+                DataTable dt2 = new DataTable();
+                SqlDataAdapter adpter = new SqlDataAdapter(command);
+                adpter.Fill(dt);
+
+            }
+            var myEnumerable = dt.AsEnumerable();
+
+            var details = from o in myEnumerable
+                          select new EntityDetailsDto()
+                          {
+                              name = o.Field<string>("name"),
+                              entity_key = o.Field<int>("entity_key"),
+                              address_line_1 = o.Field<string>("address_line_1"),
+                              address_line_2 = o.Field<string>("address_line_2"),
+                              area_code = o.Field<string>("area_code"),
+                              city = o.Field<string>("city"),
+                              email_address = o.Field<string>("email_address"),
+                              first_name = o.Field<string>("first_name"),
+                              last_name = o.Field<string>("last_name"),
+                              middle_name = o.Field<string>("middle_name"),
+                              phone_extension = o.Field<string>("phone_extension"),
+                              phone_number = o.Field<string>("phone_number"),
+                              postal_code = o.Field<string>("postal_code"),
+                              state_province = o.Field<string>("state_province"),
+                              Status = o.Field<string>("Status"),
+                              Type = o.Field<string>("Type")
+                          };
+            return details.ToList();
+
         }
     }
 }

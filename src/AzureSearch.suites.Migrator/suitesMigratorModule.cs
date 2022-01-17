@@ -36,6 +36,8 @@ namespace AzureSearch.suites.Migrator
                     Component.For<IEventBus>().Instance(NullEventBus.Instance)
                 )
             );
+
+          
         }
 
         public override void Initialize()

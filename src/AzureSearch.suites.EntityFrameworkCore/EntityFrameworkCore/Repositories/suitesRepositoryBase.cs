@@ -36,4 +36,21 @@ namespace AzureSearch.suites.EntityFrameworkCore.Repositories
 
         // Do not add any method here, add to the class above (since this inherits it)!!!
     }
+
+    /// <summary>
+    /// Base class for custom repositories of the application.
+    /// This is a shortcut of <see cref="PhoneBookRepositoryBase{TEntity,TPrimaryKey}"/> for <see cref="int"/> primary key.
+    /// </summary>
+    /// <typeparam name="TEntity">Entity type</typeparam>
+    public abstract class PhoneBookRepositoryBase<TEntity> : suitesRepositoryBase<TEntity, int>
+        where TEntity : class, IEntity<int>
+    {
+        protected PhoneBookRepositoryBase(IDbContextProvider<suitesDbContext> dbContextProvider)
+            : base(dbContextProvider)
+        {
+
+        }
+
+        //do not add any method here, add to the class above (since this inherits it)!!!
+    }
 }

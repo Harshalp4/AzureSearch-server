@@ -11,6 +11,7 @@ using AzureSearch.suites.Configuration;
 using AzureSearch.suites.Localization;
 using AzureSearch.suites.MultiTenancy;
 using AzureSearch.suites.Timing;
+using System.ComponentModel;
 
 namespace AzureSearch.suites
 {
@@ -40,6 +41,8 @@ namespace AzureSearch.suites
             
             Configuration.Settings.SettingEncryptionConfiguration.DefaultPassPhrase = suitesConsts.DefaultPassPhrase;
             SimpleStringCipher.DefaultPassPhrase = suitesConsts.DefaultPassPhrase;
+
+            
         }
 
         public override void Initialize()

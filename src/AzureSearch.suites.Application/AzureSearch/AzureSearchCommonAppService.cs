@@ -7,6 +7,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using CognitiveSearch.UI.Models;
+using System.Data.SqlClient;
+using System.Data;
+using Microsoft.AspNetCore.Hosting;
+using System.Reflection;
 
 namespace AzureSearch.suites.AzureSearch
 {  
@@ -17,18 +21,15 @@ namespace AzureSearch.suites.AzureSearch
     public class AzureSearchCommonAppService : IApplicationService
     {
         private IConfiguration _configuration { get; set; }
+
+       
         private DocumentSearchClient _docSearch { get; set; }
         private string _configurationError { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// 
-        string[] Indexnames = { "beidermorse-index", "caverphone1-index", "caverphone2-index", "doublemetaphone-index", 
-            "nysiis-index", "soundex-index","cologne-index"};
         
         public AzureSearchCommonAppService(IConfiguration configuration)
         {
             _configuration = configuration;
+           
             //InitializeDocSearch("nysiis-index");
         }
 
@@ -110,7 +111,34 @@ namespace AzureSearch.suites.AzureSearch
 
             return viewModel;
         }
+       
+        private static List<T> ConvertDataTable<T>(DataTable dt)
+        {
+            List<T> data = new List<T>();
+            foreach (DataRow row in dt.Rows)
+            {
+                T item = GetItem<T>(row);
+                data.Add(item);
+            }
+            return data;
+        }
+        private static T GetItem<T>(DataRow dr)
+        {
+            Type temp = typeof(T);
+            T obj = Activator.CreateInstance<T>();
 
+            foreach (DataColumn column in dr.Table.Columns)
+            {
+                foreach (PropertyInfo pro in temp.GetProperties())
+                {
+                    if (pro.Name == column.ColumnName)
+                        pro.SetValue(obj, dr[column.ColumnName], null);
+                    else
+                        continue;
+                }
+            }
+            return obj;
+        }
         /// <summary>
         /// 
         /// </summary>

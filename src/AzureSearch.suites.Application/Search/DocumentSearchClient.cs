@@ -241,7 +241,8 @@ namespace CognitiveSearch.UI
                 SuggestOptions options = new SuggestOptions()
                 {
                     UseFuzzyMatching = fuzzy,
-                    Size = 8
+                    Size = 100,
+                    SearchFields = { "name", "first_name", "last_name", "city", "address_line_1", "address_line_2", "email_address" }
                 };
 
                 return _searchClient.Suggest<SearchDocument>(searchText, "sg", options);
@@ -260,10 +261,17 @@ namespace CognitiveSearch.UI
             {
                 AutocompleteOptions options = new AutocompleteOptions()
                 {
-                    Mode = AutocompleteMode.OneTermWithContext,
+                    Mode = AutocompleteMode.TwoTerms,
                     UseFuzzyMatching = fuzzy,
-                    Size = 8
+                    Size = 100
                 };
+                SuggestOptions optionsu = new SuggestOptions()
+                {
+                    UseFuzzyMatching = fuzzy,
+                    Size = 100,
+                    SearchFields = { "name", "city", "address_line_1", "address_line_2", "email_address" }
+                };
+                var resultes = _searchClient.Suggest<SearchDocument>(searchText, "sg", optionsu);
 
                 return _searchClient.Autocomplete(searchText, "sg", options);
             }

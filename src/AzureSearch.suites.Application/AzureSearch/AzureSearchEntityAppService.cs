@@ -205,8 +205,8 @@ namespace AzureSearch.suites.AzureSearch
         public List<string> SuggestEntity(string term, bool fuzzy = true)
         {
             // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
-            var response = _docSearch.Autocomplete(term, fuzzy);
-
+            //var response = _docSearch.Autocomplete(term, fuzzy);
+            var response = _docSearch.Suggest(term, fuzzy);
             List<string> suggestions = new List<string>();
             if (response != null)
             {
@@ -215,7 +215,6 @@ namespace AzureSearch.suites.AzureSearch
                     suggestions.Add(result.Text);
                 }
             }
-
             // Get unique items
             List<string> uniqueItems = suggestions.Distinct().ToList();
 

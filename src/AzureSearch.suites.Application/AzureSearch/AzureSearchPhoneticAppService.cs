@@ -1,14 +1,12 @@
 ﻿using Abp.Application.Services;
-using Microsoft.Azure.Search;
-using Microsoft.Azure.Search.Models;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using PhoneticAzureSearch.Model;
-//using System;
+using CognitiveSearch.UI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using CognitiveSearch.UI.Models;
 namespace AzureSearch.suites.AzureSearch
 {
     /// <summary>
@@ -17,79 +15,178 @@ namespace AzureSearch.suites.AzureSearch
     public class AzureSearchPhoneticAppService : IApplicationService
     {
         private IConfiguration _configuration { get; set; }
+        private DocumentSearchClient _docSearch { get; set; }
+        private string _configurationError { get; set; }
         /// <summary>
         /// 
         /// </summary>
         public AzureSearchPhoneticAppService(IConfiguration configuration)
         {
             _configuration = configuration;
+            InitializeDocSearch();
         }
 
-        //public DocumentSearchResult<IndexProduct> Search(string q)
+        private void InitializeDocSearch()
+        {
+            try
+            {
+                _docSearch = new DocumentSearchClient(_configuration,"cosmosdb-index");
+            }
+            catch (Exception e)
+            {
+                _configurationError = $"The application settings are possibly incorrect. The server responded with this message: " + e.Message.ToString();
+            }
+        }
+        /// <summary>
+        /// Checks that the search client was intiailized successfully.
+        /// If not, it will add the error reason to the ViewBag alert.
+        /// </summary>
+        /// <returns>A value indicating whether the search client was initialized succesfully.</returns>
+        public bool CheckDocSearchInitialized()
+        {
+            if (_docSearch == null)
+            {
+                //ViewBag.Style = "alert-warning";
+                //ViewBag.Message = _configurationError;
+                return false;
+            }
+
+            return true;
+        }
+
+        //public IActionResult Index()
         //{
+        //    CheckDocSearchInitialized();
+
+        //    return View();
         //}
 
-        public DocumentSearchResult<IndexProduct> SearchPhrase(string phrase, bool lucene = true)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="q"></param>
+        /// <param name="facets"></param>
+        /// <param name="page"></param>
+        /// <returns></returns>
+        public SearchResultViewModel Searchmngo(string q, string facets = "", int page = 1)
         {
-            //Console.WriteLine("Phrase: {0}", phrase);
-            //Console.WriteLine("Lucene Syntax: {0}", lucene ? "Yes" : "No");
-            //Console.WriteLine("Columns: {0}", string.Join(',', columns));
+            if (facets == null)
+                facets = "";
+            if (q == null)
+                q = "";
+            // Split the facets.
+            //  Expected format: &facets=key1_val1,key1_val2,key2_val1
+            var searchFacets = facets
+                // Split by individual keys
+                .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                // Split key/values
+                .Select(f => f.Split("_", StringSplitOptions.RemoveEmptyEntries))
+                // Group by keys
+                .GroupBy(f => f[0])
+                // Select grouped key/values into SearchFacet array
+                .Select(g => new SearchFacet { Key = g.Key, Value = g.Select(f => f[1]).ToArray() })
+                .ToArray();
 
-            //string[] columns = { "name", "namePhonetic" };
-            string[] columns = { "name, namePhonetic" };
-
-            var indexClient = CreateIndexAndGetClient();
-
-            var data = indexClient.Documents.Search<IndexProduct>(phrase, new SearchParameters()
+            var viewModel = SearchViewmogno(new mongoSearchOptions
             {
-                //SearchFields = new List<string>(columns),
-                //SearchMode = SearchMode.Any,
-                IncludeTotalResultCount = true,
-                //QueryType = lucene ? QueryType.Full : QueryType.Simple, //For Lucene Syntax,
-                Top = 1000
+                q = q,
+                searchFacets = searchFacets,
+                currentPage = page
             });
 
-            return data;
+            return viewModel;
         }
-        private ISearchIndexClient CreateIndexAndGetClient()
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="searchParams"></param>
+        /// <returns></returns>
+        public SearchResultViewModel SearchViewmogno(mongoSearchOptions searchParams)
         {
-            var searchServiceName = _configuration.GetSection("SearchServiceName")?.Value;
-            var apiKey = _configuration.GetSection("SearchApiKey")?.Value;
+            if (searchParams.q == null)
+                searchParams.q = "*";
+            if (searchParams.searchFacets == null)
+                searchParams.searchFacets = new SearchFacet[0];
+            if (searchParams.currentPage == 0)
+                searchParams.currentPage = 1;
 
-            var serviceClient = new SearchServiceClient(searchServiceName, new SearchCredentials(apiKey));
-            var index = CreateIndexDefinition();
+            string searchidId = null;
 
-            if (!serviceClient.Indexes.Exists(index.Name))
-                serviceClient.Indexes.Create(index);
+            if (CheckDocSearchInitialized())
+                searchidId = _docSearch.GetSearchId().ToString();
 
-            var indexClient = serviceClient.Indexes.GetClient(index.Name);
-
-            return indexClient;
-        }
-        private Index CreateIndexDefinition()
-        {
-            var phoneticAnalizer = CreatePhoneticCustomAnalyzer();
-
-            var definition = new Index()
+            var viewModel = new SearchResultViewModel
             {
-                Name = _configuration.GetSection("AzureSearchIndexName")?.Value, // Config.GetValue<string>("AzureSearch:AzureSearchIndexName"),
-                Fields = FieldBuilder.BuildForType<IndexProduct>(),
-                Analyzers = new List<Analyzer> { phoneticAnalizer },
+                documentResult = _docSearch.GetDocuments(searchParams.q,0, searchParams.searchFacets, searchParams.currentPage, searchParams.polygonString),
+                query = searchParams.q,
+                selectedFacets = searchParams.searchFacets,
+                currentPage = searchParams.currentPage,
+                searchId = searchidId ?? null,
+                applicationInstrumentationKey = _configuration.GetSection("InstrumentationKey")?.Value,
+                searchServiceName = _configuration.GetSection("SearchServiceName")?.Value,
+                indexName = _configuration.GetSection("SearchIndexName")?.Value,
+                facetableFields = _docSearch.Model.Facets.Select(k => k.Name).ToArray()
             };
-
-            return definition;
+            return viewModel;
         }
-        private CustomAnalyzer CreatePhoneticCustomAnalyzer()
-        {
-            var analyzer = new CustomAnalyzer
-            {
-                TokenFilters = new List<TokenFilterName> { TokenFilterName.Phonetic, TokenFilterName.AsciiFolding, TokenFilterName.Lowercase },
-                Tokenizer = TokenizerName.Standard,
-                Name = "PhoneticCustomAnalyzer"
-            };
 
-            return analyzer;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="term"></param>
+        /// <param name="fuzzy"></param>
+        /// <returns></returns>
+        public List<string> Suggestmogo(string term, bool fuzzy = true)
+        {
+            // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
+            var response = _docSearch.Autocomplete(term, fuzzy);
+
+            List<string> suggestions = new List<string>();
+            if (response != null)
+            {
+                foreach (var result in response.Results)
+                {
+                    suggestions.Add(result.Text);
+                }
+            }
+
+            // Get unique items
+            List<string> uniqueItems = suggestions.Distinct().ToList();
+
+            return uniqueItems;
+
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public DocumentResult mongoGetDocumentById(string id = "")
+        {
+            var result = _docSearch.GetDocumentById(id);
+
+            return result;
+        }
+
+        public class mongoSearchOptions
+        {
+            public string q { get; set; }
+            /// <summary>
+            /// 
+            /// </summary>
+            public SearchFacet[] searchFacets { get; set; }
+            /// <summary>
+            /// 
+            /// </summary>
+            public int currentPage { get; set; }
+            /// <summary>
+            /// 
+            /// </summary>
+            public string polygonString { get; set; }
         }
     }
 }
+
 

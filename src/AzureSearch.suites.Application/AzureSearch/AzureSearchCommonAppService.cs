@@ -9,7 +9,7 @@ using Microsoft.Extensions.Configuration;
 using CognitiveSearch.UI.Models;
 
 namespace AzureSearch.suites.AzureSearch
-{  
+{
 
     /// <summary>
     /// 
@@ -23,9 +23,9 @@ namespace AzureSearch.suites.AzureSearch
         /// 
         /// </summary>
         /// 
-        string[] Indexnames = { "beidermorse-index", "caverphone1-index", "caverphone2-index", "doublemetaphone-index", 
+        string[] Indexnames = { "beidermorse-index", "caverphone1-index", "caverphone2-index", "doublemetaphone-index",
             "nysiis-index", "soundex-index","cologne-index"};
-        
+
         public AzureSearchCommonAppService(IConfiguration configuration)
         {
             _configuration = configuration;
@@ -76,11 +76,11 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="facets"></param>
         /// <param name="page"></param>
         /// <returns></returns>
-        public SearchResultViewModel Search(string q,string indexname, string accuracylevel, string facets = "",  int page = 1)
+        public SearchResultViewModel Search(string q, string indexname, string accuracylevel, string facets = "", int page = 1)
         {
-            indexname=indexname.Trim();
+       // indexname=indexname.Trim();
 
-            InitializeDocSearch(indexname);
+            InitializeDocSearch("cosmosdb-index");
             if (facets == null)
                 facets = "";
             if (q == null)

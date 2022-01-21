@@ -68,7 +68,7 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="facets"></param>
         /// <param name="page"></param>
         /// <returns></returns>
-        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false)
+        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false, bool isMongoIndex = false)
         {
            
             if (facets == null)
@@ -93,7 +93,8 @@ namespace AzureSearch.suites.AzureSearch
                 q = q,
                 searchFacets = searchFacets,
                 currentPage = page,
-                isProperty = isProperty
+                isProperty = isProperty,
+                IsMongo = isMongoIndex
             });
           
            
@@ -115,9 +116,14 @@ namespace AzureSearch.suites.AzureSearch
                 searchParams.currentPage = 1;
 
             string searchidId = null;
-
+            var indexName = "EntitySearchIndexName";
             if (CheckDocSearchInitialized())
                 searchidId = _docSearch.GetSearchId().ToString();
+
+            if (searchParams.IsMongo) 
+            {
+                indexName = _configuration.GetSection("MongoSearchIndexName")?.Value;
+            }
 
             var viewModel = new SearchResultViewModel
             {
@@ -128,7 +134,7 @@ namespace AzureSearch.suites.AzureSearch
                 searchId = searchidId ?? null,
                 applicationInstrumentationKey = _configuration.GetSection("InstrumentationKey")?.Value,
                 searchServiceName = _configuration.GetSection("SearchServiceName")?.Value,
-                indexName = _configuration.GetSection("EntitySearchIndexName")?.Value,
+                indexName = indexName,
                 facetableFields = _docSearch.Model.Facets.Select(k => k.Name).ToArray()
             };            
             var details = from o in viewModel.documentResult.Results
@@ -251,6 +257,8 @@ namespace AzureSearch.suites.AzureSearch
             public string polygonString { get; set; }
 
             public bool isProperty { get; set; }
+
+            public bool IsMongo { get; set; }
         }
 
         public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)

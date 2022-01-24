@@ -1,4 +1,6 @@
-﻿using Abp.Application.Services;
+﻿
+
+using Abp.Application.Services;
 using CognitiveSearch.UI;
 using System;
 using System.Collections.Generic;
@@ -24,13 +26,15 @@ namespace AzureSearch.suites.AzureSearch
         {
             _configuration = configuration;
             InitializeDocSearch();
+            
         }
 
         private void InitializeDocSearch()
         {
             try
             {
-                _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value);
+                SearchOptionsEntity searchParams = new SearchOptionsEntity();
+                _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, searchParams.IsMongo );
             }
             catch (Exception e)
             {
@@ -68,7 +72,7 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="facets"></param>
         /// <param name="page"></param>
         /// <returns></returns>
-        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false)
+        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false, bool isMongoIndex = false)
         {
            
             if (facets == null)
@@ -93,13 +97,13 @@ namespace AzureSearch.suites.AzureSearch
                 q = q,
                 searchFacets = searchFacets,
                 currentPage = page,
-                isProperty = isProperty
+                isProperty = isProperty,
+                IsMongo = isMongoIndex
             });
           
            
             return viewModel;
         }
-
         /// <summary>
         /// 
         /// </summary>
@@ -115,32 +119,54 @@ namespace AzureSearch.suites.AzureSearch
                 searchParams.currentPage = 1;
 
             string searchidId = null;
-
+            var indexName = "EntitySearchIndexName";
             if (CheckDocSearchInitialized())
                 searchidId = _docSearch.GetSearchId().ToString();
 
+            if (searchParams.IsMongo) 
+            {
+                indexName = _configuration.GetSection("MongoSearchIndexName")?.Value;
+            }
+
             var viewModel = new SearchResultViewModel
             {
-                documentResult = _docSearch.GetDocuments(searchParams.q,0, searchParams.searchFacets, searchParams.currentPage, searchParams.polygonString,searchParams.isProperty),
+                documentResult = _docSearch.GetDocuments(searchParams.q,0, searchParams.searchFacets, searchParams.currentPage, searchParams.polygonString,searchParams.isProperty,searchParams.IsMongo),
                 query = searchParams.q,
                 selectedFacets = searchParams.searchFacets,
                 currentPage = searchParams.currentPage,
                 searchId = searchidId ?? null,
                 applicationInstrumentationKey = _configuration.GetSection("InstrumentationKey")?.Value,
                 searchServiceName = _configuration.GetSection("SearchServiceName")?.Value,
-                indexName = _configuration.GetSection("EntitySearchIndexName")?.Value,
+                indexName = indexName,
                 facetableFields = _docSearch.Model.Facets.Select(k => k.Name).ToArray()
-            };            
+            };     
+            if(searchParams.IsMongo)
+            {
+                var details = GetCasesDetails(viewModel);
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
+            }
+            else 
+            {
+                var details = GetEntityDetails(viewModel);
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
+            }
+                
+
+            return viewModel;
+        }
+
+        private IEnumerable<EntityDetailsDto> GetCasesDetails(SearchResultViewModel viewModel)
+        {
             var details = from o in viewModel.documentResult.Results
                           select new EntityDetailsDto()
                           {
-                              entity_key = o.Document.Where(s => s.Key == "entity_key").Select(s =>Convert.ToInt32(s.Value)).FirstOrDefault(),
-                              
+                              entity_key = o.Document.Where(s => s.Key == "CASE_ID").Select(s => Convert.ToInt32(s.Value)).FirstOrDefault(),
+
                               name = o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              address_line_1 = o.Document.Where(s=>s.Key== "address_line_1").Select(s=>s.Value).FirstOrDefault() == null ? ""
+                              address_line_1 = o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
@@ -168,12 +194,12 @@ namespace AzureSearch.suites.AzureSearch
                                         : o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              Type = o.Document.Where(s => s.Key == "Type").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "Type").Select(s => s.Value).FirstOrDefault().ToString(),
+                              Type = o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              Status = o.Document.Where(s => s.Key == "Status").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "Status").Select(s => s.Value).FirstOrDefault().ToString(),
+                              Status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
                               phone_number = o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault() == null ? ""
@@ -186,16 +212,81 @@ namespace AzureSearch.suites.AzureSearch
 
                               phone_extension = o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault().ToString(),
-                              
-                              
-                              state_province= o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault()==null ? "" 
+
+
+                              state_province = o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault() == null ? ""
                                              : o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault().ToString()
                           };
-            viewModel.EntityDetails = details.ToArray().GroupBy(s=>s.entity_key).Select(s=>s.First()).ToList();
 
-            return viewModel;
+            return details;
         }
 
+        private IEnumerable<EntityDetailsDto> GetEntityDetails(SearchResultViewModel viewModel) 
+        {
+            var details = from o in viewModel.documentResult.Results
+                          select new EntityDetailsDto()
+                          {
+                              entity_key = o.Document.Where(s => s.Key == "entity_key").Select(s => Convert.ToInt32(s.Value)).FirstOrDefault(),
+
+                              name = o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              address_line_1 = o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              address_line_2 = o.Document.Where(s => s.Key == "address_line_2").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "address_line_2").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              first_name = o.Document.Where(s => s.Key == "first_name").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "first_name").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              middle_name = o.Document.Where(s => s.Key == "middle_name").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "middle_name").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              last_name = o.Document.Where(s => s.Key == "last_name").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "last_name").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              area_code = o.Document.Where(s => s.Key == "area_code").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "area_code").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              city = o.Document.Where(s => s.Key == "city").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "city").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              email_address = o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              Type = o.Document.Where(s => s.Key == "type").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "type").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              Status = o.Document.Where(s => s.Key == "status").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "status").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              phone_number = o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              postal_code = o.Document.Where(s => s.Key == "postal_code").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "postal_code").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              phone_extension = o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              state_province = o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                             : o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault().ToString()
+                          };
+
+            return details;
+
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -251,6 +342,8 @@ namespace AzureSearch.suites.AzureSearch
             public string polygonString { get; set; }
 
             public bool isProperty { get; set; }
+
+            public bool IsMongo { get; set; }
         }
 
         public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)

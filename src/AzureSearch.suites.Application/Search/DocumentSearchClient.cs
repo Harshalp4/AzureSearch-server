@@ -55,16 +55,24 @@ namespace CognitiveSearch.UI
         private static string defaultContainerUriValue = "https://{storage-account-name}.blob.core.windows.net/{container-name}";
 
 
-        public DocumentSearchClient(IConfiguration configuration,string indexname)
+        public DocumentSearchClient(IConfiguration configuration,string indexname, bool isMongoIndex = false)
         {
             try
             {
+                var newindexname = !string.IsNullOrEmpty(indexname) ? indexname : configuration.GetSection("SearchIndexName")?.Value;
+                var newindexername = configuration.GetSection("SearchIndexerName")?.Value;
+                if (isMongoIndex == true)
+                {
+                   newindexname =  configuration.GetSection("MongoSearchIndexName").Value;
+                   newindexername = configuration.GetSection("MongoSearchIndexer").Value;
+                }
+
                 _configuration = configuration;
                 searchServiceName = configuration.GetSection("SearchServiceName")?.Value;
                 apiKey = configuration.GetSection("SearchApiKey")?.Value;
-                IndexName = !string.IsNullOrEmpty(indexname) ? indexname : configuration.GetSection("SearchIndexName")?.Value;
+                IndexName = newindexname;
                 //IndexName =  configuration.GetSection("SearchIndexName")?.Value;
-                IndexerName = configuration.GetSection("SearchIndexerName")?.Value;
+                IndexerName = newindexername;
                 idField = configuration.GetSection("KeyField")?.Value;
                 telemetryClient.InstrumentationKey = configuration.GetSection("InstrumentationKey")?.Value;
 
@@ -98,11 +106,11 @@ namespace CognitiveSearch.UI
         /// <param name="currentPage"></param>
         /// <param name="polygonString"></param>
         /// <returns></returns>
-        public SearchResults<SearchDocument> Search(string searchText,double accuracy, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null,bool isProperty=false)
+        public SearchResults<SearchDocument> Search(string searchText,double accuracy, SearchFacet[] searchFacets = null, string[] selectFilter = null, int currentPage = 1, string polygonString = null,bool isProperty=false, bool isMongo=false)
         {
             try
             {
-                Azure.Search.Documents.SearchOptions options = GenerateSearchOptions(searchFacets, selectFilter, currentPage, polygonString, isProperty);
+                Azure.Search.Documents.SearchOptions options = GenerateSearchOptions(searchFacets, selectFilter, currentPage, polygonString, isProperty,isMongo);
 
                 //if (!string.IsNullOrEmpty(telemetryClient.InstrumentationKey))
                 //{
@@ -144,7 +152,7 @@ namespace CognitiveSearch.UI
         }
 
         public Azure.Search.Documents.SearchOptions GenerateSearchOptions(SearchFacet[] searchFacets = null, string[] selectFilter = null, 
-            int currentPage = 1, string polygonString = null,bool isProperty=false)
+            int currentPage = 1, string polygonString = null,bool isProperty=false,bool isMongo=false)
         {
             Azure.Search.Documents.SearchOptions options = new Azure.Search.Documents.SearchOptions()
             {
@@ -379,7 +387,7 @@ namespace CognitiveSearch.UI
             }
             return scores.ToList();
         }
-        public DocumentResult GetDocuments(string q,int accuracy, SearchFacet[] searchFacets, int currentPage, string polygonString = null,bool isProperty=false)
+        public DocumentResult GetDocuments(string q,int accuracy, SearchFacet[] searchFacets, int currentPage, string polygonString = null,bool isProperty=false, bool isMongo=false)
         {
             GetContainerSasUris();
 
@@ -390,7 +398,7 @@ namespace CognitiveSearch.UI
                 q = q.Replace("?", "");
             }
 
-            var response = Search(q, accuracy,searchFacets, selectFilter, currentPage, polygonString,isProperty);
+            var response = Search(q, accuracy,searchFacets, selectFilter, currentPage, polygonString,isProperty,isMongo);
             var searchId = GetSearchId().ToString();
             var facetResults = new List<Facet>();
             var tagsResults = new List<object>();

@@ -317,6 +317,8 @@ namespace AzureSearch.suites.AzureSearch
             public string accuracy { get; set; }
 
             public string indexname { get; set; }
+
+            public bool isMongo { get; set; }
         }
     }
     

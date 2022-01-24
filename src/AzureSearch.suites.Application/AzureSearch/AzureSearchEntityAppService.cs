@@ -33,8 +33,8 @@ namespace AzureSearch.suites.AzureSearch
         {
             try
             {
-                SearchOptionsEntity searchParams = new SearchOptionsEntity();
-                _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, searchParams.IsMongo );
+                //SearchOptionsEntity searchParams = new SearchOptionsEntity();
+               // _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, searchParams.IsMongo );
             }
             catch (Exception e)
             {
@@ -74,7 +74,7 @@ namespace AzureSearch.suites.AzureSearch
         /// <returns></returns>
         public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false, bool isMongoIndex = false)
         {
-           
+            _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, isMongoIndex);
             if (facets == null)
                 facets = "";
             if (q == null)
@@ -260,12 +260,12 @@ namespace AzureSearch.suites.AzureSearch
                                         : o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              Type = o.Document.Where(s => s.Key == "type").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "type").Select(s => s.Value).FirstOrDefault().ToString(),
+                              Type = o.Document.Where(s => s.Key == "Type").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "Type").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              Status = o.Document.Where(s => s.Key == "status").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "status").Select(s => s.Value).FirstOrDefault().ToString(),
+                              Status = o.Document.Where(s => s.Key == "Status").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "Status").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
                               phone_number = o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault() == null ? ""

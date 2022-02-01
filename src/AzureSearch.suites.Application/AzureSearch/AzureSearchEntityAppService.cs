@@ -106,7 +106,8 @@ namespace AzureSearch.suites.AzureSearch
                 searchFacets = searchFacets,
                 currentPage = page,
                 isProperty = isProperty,
-                IsMongo = isMongoIndex
+                IsMongo = isMongoIndex,
+                IsGlobal=globalIndex
             });
           
            
@@ -153,12 +154,16 @@ namespace AzureSearch.suites.AzureSearch
                 var details = GetCasesDetails(viewModel);
                 viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
             }
-            else 
+            else if(searchParams.IsGlobal)
+            {
+                var details = GetEntityDetails(viewModel);
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.case_id).Select(s => s.First()).ToList();
+            }
+            else
             {
                 var details = GetEntityDetails(viewModel);
                 viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
-            }
-                
+            } 
 
             
             return viewModel;
@@ -335,6 +340,8 @@ namespace AzureSearch.suites.AzureSearch
             public bool isProperty { get; set; }
 
             public bool IsMongo { get; set; }
+
+            public bool IsGlobal { get; set; }
         }
 
         public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)

@@ -152,12 +152,12 @@ namespace AzureSearch.suites.AzureSearch
             if(searchParams.IsMongo)
             {
                 var details = GetCasesDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.case_id).Select(s => s.First()).ToList();
             }
             else if(searchParams.IsGlobal)
             {
                 var details = GetEntityDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.case_id).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueId).Select(s => s.First()).ToList();
             }
             else
             {
@@ -272,6 +272,13 @@ namespace AzureSearch.suites.AzureSearch
 
                               source = o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              uniqueId = o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                             
+                              
+
 
                           };
 

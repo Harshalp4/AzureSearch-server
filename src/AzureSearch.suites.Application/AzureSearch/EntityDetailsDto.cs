@@ -42,5 +42,7 @@
         public string case_status { get; set; } 
         public string creation_reason { get; set; }
         public string source { get; set; }
+
+        public string uniqueId { get; set; }
     }
 }

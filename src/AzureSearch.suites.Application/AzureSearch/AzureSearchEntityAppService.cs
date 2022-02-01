@@ -277,8 +277,13 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="term"></param>
         /// <param name="fuzzy"></param>
         /// <returns></returns>
-        public List<string> SuggestEntity(string term, bool fuzzy = true)
+        public List<string> SuggestEntity(string term, bool fuzzy = true,bool isglobal=false)
         {
+
+            string indexName = isglobal==false ? _configuration.GetSection("EntitySearchIndexName")?.Value
+            : _configuration.GetSection("GlobalSearchIndexName")?.Value;
+            _docSearch = new DocumentSearchClient(_configuration, indexName);
+
             // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
             //var response = _docSearch.Autocomplete(term, fuzzy);
             var response = _docSearch.Suggest(term, fuzzy);

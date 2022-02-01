@@ -351,7 +351,7 @@ namespace AzureSearch.suites.AzureSearch
             public bool IsGlobal { get; set; }
         }
 
-        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)
+        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey,bool ismongo)
         
         {
             var connstring = _configuration.GetConnectionString("Default");

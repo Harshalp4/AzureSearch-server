@@ -93,7 +93,7 @@ namespace AzureSearch.suites.AzureSearch
                 // Split by individual keys
                 .Split(",", StringSplitOptions.RemoveEmptyEntries)
                 // Split key/values
-                .Select(f => f.Split("_", StringSplitOptions.RemoveEmptyEntries))
+                .Select(f => f.Split("__", StringSplitOptions.RemoveEmptyEntries))
                 // Group by keys
                 .GroupBy(f => f[0])
                 // Select grouped key/values into SearchFacet array

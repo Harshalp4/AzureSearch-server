@@ -72,9 +72,15 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="facets"></param>
         /// <param name="page"></param>
         /// <returns></returns>
-        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1,bool isProperty=false, bool isMongoIndex = false)
+ 
+        public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1, bool isProperty = false, bool isMongoIndex = false, bool globalIndex = false)
         {
-            _docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, isMongoIndex);
+            //_docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, isMongoIndex);
+            string indexName = isProperty ? _configuration.GetSection("EntitySearchIndexName")?.Value
+            : isMongoIndex ? _configuration.GetSection("MongoSearchIndexName")?.Value
+            : _configuration.GetSection("GlobalSearchIndexName")?.Value;
+            _docSearch = new DocumentSearchClient(_configuration, indexName);
+
             if (facets == null)
                 facets = "";
             if (q == null)
@@ -152,6 +158,7 @@ namespace AzureSearch.suites.AzureSearch
             }
                 
 
+            
             return viewModel;
         }
 
@@ -160,62 +167,23 @@ namespace AzureSearch.suites.AzureSearch
             var details = from o in viewModel.documentResult.Results
                           select new EntityDetailsDto()
                           {
-                              entity_key = o.Document.Where(s => s.Key == "CASE_ID").Select(s => Convert.ToInt32(s.Value)).FirstOrDefault(),
-
-                              name = o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "name").Select(s => s.Value).FirstOrDefault().ToString(),
+                              case_id = o.Document.Where(s => s.Key == "CASE_ID").Select(s => Convert.ToInt32(s.Value)).FirstOrDefault(),
 
 
-                              address_line_1 = o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "address_line_1").Select(s => s.Value).FirstOrDefault().ToString(),
 
-
-                              address_line_2 = o.Document.Where(s => s.Key == "address_line_2").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "address_line_2").Select(s => s.Value).FirstOrDefault().ToString(),
-
-                              first_name = o.Document.Where(s => s.Key == "first_name").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "first_name").Select(s => s.Value).FirstOrDefault().ToString(),
-
-                              middle_name = o.Document.Where(s => s.Key == "middle_name").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "middle_name").Select(s => s.Value).FirstOrDefault().ToString(),
-
-                              last_name = o.Document.Where(s => s.Key == "last_name").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "last_name").Select(s => s.Value).FirstOrDefault().ToString(),
-
-                              area_code = o.Document.Where(s => s.Key == "area_code").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "area_code").Select(s => s.Value).FirstOrDefault().ToString(),
-
-
-                              city = o.Document.Where(s => s.Key == "city").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "city").Select(s => s.Value).FirstOrDefault().ToString(),
-
-
-                              email_address = o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "email_address").Select(s => s.Value).FirstOrDefault().ToString(),
-
-
-                              Type = o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault() == null ? ""
+                              case_type = o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault().ToString(),
 
 
-                              Status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
+                              case_status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault().ToString(),
 
+                              creation_reason = o.Document.Where(s => s.Key == "CREATION_REASON").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CREATION_REASON").Select(s => s.Value).FirstOrDefault().ToString(),
 
-                              phone_number = o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "phone_number").Select(s => s.Value).FirstOrDefault().ToString(),
+                              source = o.Document.Where(s => s.Key == "source").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "source").Select(s => s.Value).FirstOrDefault().ToString(),
 
-
-                              postal_code = o.Document.Where(s => s.Key == "postal_code").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "postal_code").Select(s => s.Value).FirstOrDefault().ToString(),
-
-
-                              phone_extension = o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "phone_extension").Select(s => s.Value).FirstOrDefault().ToString(),
-
-
-                              state_province = o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                             : o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault().ToString()
                           };
 
             return details;
@@ -281,7 +249,23 @@ namespace AzureSearch.suites.AzureSearch
 
 
                               state_province = o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                             : o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault().ToString()
+                                             : o.Document.Where(s => s.Key == "state_province").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              case_id = o.Document.Where(s => s.Key == "CASE_ID").Select(s => Convert.ToInt32(s.Value)).FirstOrDefault(),
+
+                              case_type = o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault().ToString(),
+
+
+                              case_status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              creation_reason = o.Document.Where(s => s.Key == "CREATION_REASON").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "CREATION_REASON").Select(s => s.Value).FirstOrDefault().ToString(),
+
+                              source = o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault().ToString(),
+
                           };
 
             return details;

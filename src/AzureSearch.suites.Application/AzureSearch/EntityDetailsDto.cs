@@ -36,5 +36,11 @@
         public string Type { get; set; }
 
         public string Status { get; set; }
+
+        public string case_type { get; set; }
+        public int case_id { get; set; }  
+        public string case_status { get; set; } 
+        public string creation_reason { get; set; }
+        public string source { get; set; }
     }
 }

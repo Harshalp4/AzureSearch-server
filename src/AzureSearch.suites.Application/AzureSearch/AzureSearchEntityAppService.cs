@@ -151,12 +151,12 @@ namespace AzureSearch.suites.AzureSearch
             if(searchParams.IsMongo)
             {
                 var details = GetCasesDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.case_id).Select(s => s.First()).ToList();
             }
             else 
             {
                 var details = GetEntityDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
             }
                 
 
@@ -341,8 +341,7 @@ namespace AzureSearch.suites.AzureSearch
             DataTable dt = new DataTable();
             if (IsMongo)
             {
-                
-
+             
                 var mongoconnectionString = _configuration.GetConnectionString("MongoConnectionString");
                 var client = new MongoClient(mongoconnectionString);
                 var result = new List<EntityDetailsDto>();

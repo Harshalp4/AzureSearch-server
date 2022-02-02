@@ -250,7 +250,7 @@ namespace CognitiveSearch.UI
                 {
                     UseFuzzyMatching = fuzzy,
                     Size = 100,
-                    SearchFields = { "name", "first_name", "last_name", "city", "address_line_1", "address_line_2", "email_address", "CASE_TYPE" }
+                    SearchFields = { "name", "first_name", "last_name", "city", "address_line_1", "address_line_2", "email_address" }
                 };
 
                 return _searchClient.Suggest<SearchDocument>(searchText, "sg", options);

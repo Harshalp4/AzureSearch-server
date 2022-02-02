@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using CognitiveSearch.UI.Models;
 using System.Data.SqlClient;
 using System.Data;
+using MongoDB.Driver;
+using MongoDB.Bson;
 
 namespace AzureSearch.suites.AzureSearch
 {
@@ -149,12 +151,12 @@ namespace AzureSearch.suites.AzureSearch
             if(searchParams.IsMongo)
             {
                 var details = GetCasesDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
             }
             else 
             {
                 var details = GetEntityDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
             }
                 
 
@@ -184,6 +186,8 @@ namespace AzureSearch.suites.AzureSearch
                               source = o.Document.Where(s => s.Key == "source").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "source").Select(s => s.Value).FirstOrDefault().ToString(),
 
+                              uniqueid = o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault().ToString(),
                           };
 
             return details;
@@ -266,6 +270,8 @@ namespace AzureSearch.suites.AzureSearch
                               source = o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault().ToString(),
 
+                              uniqueid = o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault() == null ? ""
+                                        : o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault().ToString(),
                           };
 
             return details;
@@ -330,50 +336,86 @@ namespace AzureSearch.suites.AzureSearch
             public bool IsMongo { get; set; }
         }
 
-        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)
-        
+        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey, bool IsMongo=false)
         {
-            var connstring = _configuration.GetConnectionString("Default");
             DataTable dt = new DataTable();
-
-            using (SqlConnection connection = new SqlConnection(connstring))
+            if (IsMongo)
             {
-                connection.Open();
-                SqlCommand command = new SqlCommand("getentitydetails", connection);
-                command.CommandType = CommandType.StoredProcedure;
-                SqlParameter param = new SqlParameter();
-                param.ParameterName = "@entity_key";
-                param.Value = entitykey;
-                command.Parameters.Add(param);
-                //rowsAffected = command.ExecuteNonQuery();
-                DataTable dt2 = new DataTable();
-                SqlDataAdapter adpter = new SqlDataAdapter(command);
-                adpter.Fill(dt);
+                
 
+                var mongoconnectionString = _configuration.GetConnectionString("MongoConnectionString");
+                var client = new MongoClient(mongoconnectionString);
+                var result = new List<EntityDetailsDto>();
+                var database = client.GetDatabase("mongodb");
+
+                var cases = database.GetCollection<BsonDocument>("casecollection");
+
+                var filter = Builders<BsonDocument>.Filter.Eq("CASE_ID", entitykey);
+
+                var document = cases.Find(filter).FirstOrDefault();
+
+                var myEnumerable = dt.AsEnumerable();
+
+                EntityDetailsDto objEntity = new EntityDetailsDto();
+
+                var details =  new EntityDetailsDto()
+                              {
+                                   case_status = document.GetValue("CASE_STATUS").ToString(),
+                                   case_type = document.GetValue("CASE_TYPE").ToString(),
+                                   case_id = document.GetValue("CASE_ID").ToInt32(),
+                                   source = document.GetValue("source").ToString()
+                              }
+                ;
+                if(details != null)
+                {
+                    result.Add(details);
+                }
+                return result;
             }
-            var myEnumerable = dt.AsEnumerable();
+            else
+            {
+                var connstring = _configuration.GetConnectionString("Default");
+                using (SqlConnection connection = new SqlConnection(connstring))
+                {
+                    connection.Open();
+                    SqlCommand command = new SqlCommand("getentitydetails", connection);
+                    command.CommandType = CommandType.StoredProcedure;
+                    SqlParameter param = new SqlParameter();
+                    param.ParameterName = "@entity_key";
+                    param.Value = entitykey;
+                    command.Parameters.Add(param);
+                    //rowsAffected = command.ExecuteNonQuery();
+                    DataTable dt2 = new DataTable();
+                    SqlDataAdapter adpter = new SqlDataAdapter(command);
+                    adpter.Fill(dt);
 
-            var details = from o in myEnumerable
-                          select new EntityDetailsDto()
-                          {
-                              name = o.Field<string>("name"),
-                              entity_key = o.Field<int>("entity_key"),
-                              address_line_1 = o.Field<string>("address_line_1"),
-                              address_line_2 = o.Field<string>("address_line_2"),
-                              area_code = o.Field<string>("area_code"),
-                              city = o.Field<string>("city"),
-                              email_address = o.Field<string>("email_address"),
-                              first_name = o.Field<string>("first_name"),
-                              last_name = o.Field<string>("last_name"),
-                              middle_name = o.Field<string>("middle_name"),
-                              phone_extension = o.Field<string>("phone_extension"),
-                              phone_number = o.Field<string>("phone_number"),
-                              postal_code = o.Field<string>("postal_code"),
-                              state_province = o.Field<string>("state_province"),
-                              Status = o.Field<string>("Status"),
-                              Type = o.Field<string>("Type")
-                          };
-            return details.ToList();
+                }
+                var myEnumerable = dt.AsEnumerable();
+
+                var details = from o in myEnumerable
+                              select new EntityDetailsDto()
+                              {
+                                  name = o.Field<string>("name"),
+                                  entity_key = o.Field<int>("entity_key"),
+                                  address_line_1 = o.Field<string>("address_line_1"),
+                                  address_line_2 = o.Field<string>("address_line_2"),
+                                  area_code = o.Field<string>("area_code"),
+                                  city = o.Field<string>("city"),
+                                  email_address = o.Field<string>("email_address"),
+                                  first_name = o.Field<string>("first_name"),
+                                  last_name = o.Field<string>("last_name"),
+                                  middle_name = o.Field<string>("middle_name"),
+                                  phone_extension = o.Field<string>("phone_extension"),
+                                  phone_number = o.Field<string>("phone_number"),
+                                  postal_code = o.Field<string>("postal_code"),
+                                  state_province = o.Field<string>("state_province"),
+                                  Status = o.Field<string>("Status"),
+                                  Type = o.Field<string>("Type")
+                              };
+                return details.ToList();
+            }
+            
+            
 
         }
     }

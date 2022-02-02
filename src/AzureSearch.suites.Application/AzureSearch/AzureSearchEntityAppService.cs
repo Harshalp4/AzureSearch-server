@@ -78,9 +78,11 @@ namespace AzureSearch.suites.AzureSearch
         public SearchResultViewModel SearchEntity(string q, string facets = "", int page = 1, bool isProperty = false, bool isMongoIndex = false, bool globalIndex = false)
         {
             //_docSearch = new DocumentSearchClient(_configuration, _configuration.GetSection("EntitySearchIndexName")?.Value, isMongoIndex);
-            string indexName = isProperty ? _configuration.GetSection("EntitySearchIndexName")?.Value
+            string indexName = globalIndex ? _configuration.GetSection("GlobalSearchIndexName")?.Value
             : isMongoIndex ? _configuration.GetSection("MongoSearchIndexName")?.Value
-            : _configuration.GetSection("GlobalSearchIndexName")?.Value;
+            : _configuration.GetSection("EntitySearchIndexName")?.Value;
+
+            //
             _docSearch = new DocumentSearchClient(_configuration, indexName);
 
             if (facets == null)
@@ -93,7 +95,7 @@ namespace AzureSearch.suites.AzureSearch
                 // Split by individual keys
                 .Split(",", StringSplitOptions.RemoveEmptyEntries)
                 // Split key/values
-                .Select(f => f.Split("_", StringSplitOptions.RemoveEmptyEntries))
+                .Select(f => f.Split("__", StringSplitOptions.RemoveEmptyEntries))
                 // Group by keys
                 .GroupBy(f => f[0])
                 // Select grouped key/values into SearchFacet array
@@ -106,7 +108,8 @@ namespace AzureSearch.suites.AzureSearch
                 searchFacets = searchFacets,
                 currentPage = page,
                 isProperty = isProperty,
-                IsMongo = isMongoIndex
+                IsMongo = isMongoIndex,
+                IsGlobal=globalIndex
             });
           
            
@@ -151,12 +154,12 @@ namespace AzureSearch.suites.AzureSearch
             if(searchParams.IsMongo)
             {
                 var details = GetCasesDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
             }
-            else 
+            else
             {
                 var details = GetEntityDetails(viewModel);
-                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.entity_key).Select(s => s.First()).ToList();
             }
                 
 
@@ -270,8 +273,6 @@ namespace AzureSearch.suites.AzureSearch
                               source = o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "Source").Select(s => s.Value).FirstOrDefault().ToString(),
 
-                              uniqueid = o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault() == null ? ""
-                                        : o.Document.Where(s => s.Key == "uniqueid").Select(s => s.Value).FirstOrDefault().ToString(),
                           };
 
             return details;
@@ -283,8 +284,13 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="term"></param>
         /// <param name="fuzzy"></param>
         /// <returns></returns>
-        public List<string> SuggestEntity(string term, bool fuzzy = true)
+        public List<string> SuggestEntity(string term, bool fuzzy = true,bool isglobal=false)
         {
+
+            string indexName = isglobal==false ? _configuration.GetSection("EntitySearchIndexName")?.Value
+            : _configuration.GetSection("GlobalSearchIndexName")?.Value;
+            _docSearch = new DocumentSearchClient(_configuration, indexName);
+
             // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
             //var response = _docSearch.Autocomplete(term, fuzzy);
             var response = _docSearch.Suggest(term, fuzzy);
@@ -334,60 +340,29 @@ namespace AzureSearch.suites.AzureSearch
             public bool isProperty { get; set; }
 
             public bool IsMongo { get; set; }
+
+            public bool IsGlobal { get; set; }
         }
 
-        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey, bool IsMongo=false)
+        public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey)
+        
         {
+            var connstring = _configuration.GetConnectionString("Default");
             DataTable dt = new DataTable();
-            if (IsMongo)
+
+            using (SqlConnection connection = new SqlConnection(connstring))
             {
-                
-
-                var mongoconnectionString = _configuration.GetConnectionString("MongoConnectionString");
-                var client = new MongoClient(mongoconnectionString);
-                var result = new List<EntityDetailsDto>();
-                var database = client.GetDatabase("mongodb");
-
-                var cases = database.GetCollection<BsonDocument>("casecollection");
-
-                var filter = Builders<BsonDocument>.Filter.Eq("CASE_ID", entitykey);
-
-                var document = cases.Find(filter).FirstOrDefault();
-
-                var myEnumerable = dt.AsEnumerable();
-
-                EntityDetailsDto objEntity = new EntityDetailsDto();
-
-                var details =  new EntityDetailsDto()
-                              {
-                                   case_status = document.GetValue("CASE_STATUS").ToString(),
-                                   case_type = document.GetValue("CASE_TYPE").ToString(),
-                                   case_id = document.GetValue("CASE_ID").ToInt32(),
-                                   source = document.GetValue("source").ToString()
-                              }
-                ;
-                if(details != null)
-                {
-                    result.Add(details);
-                }
-                return result;
-            }
-            else
-            {
-                var connstring = _configuration.GetConnectionString("Default");
-                using (SqlConnection connection = new SqlConnection(connstring))
-                {
-                    connection.Open();
-                    SqlCommand command = new SqlCommand("getentitydetails", connection);
-                    command.CommandType = CommandType.StoredProcedure;
-                    SqlParameter param = new SqlParameter();
-                    param.ParameterName = "@entity_key";
-                    param.Value = entitykey;
-                    command.Parameters.Add(param);
-                    //rowsAffected = command.ExecuteNonQuery();
-                    DataTable dt2 = new DataTable();
-                    SqlDataAdapter adpter = new SqlDataAdapter(command);
-                    adpter.Fill(dt);
+                connection.Open();
+                SqlCommand command = new SqlCommand("getentitydetails", connection);
+                command.CommandType = CommandType.StoredProcedure;
+                SqlParameter param = new SqlParameter();
+                param.ParameterName = "@entity_key";
+                param.Value = entitykey;
+                command.Parameters.Add(param);
+                //rowsAffected = command.ExecuteNonQuery();
+                DataTable dt2 = new DataTable();
+                SqlDataAdapter adpter = new SqlDataAdapter(command);
+                adpter.Fill(dt);
 
                 }
                 var myEnumerable = dt.AsEnumerable();

@@ -93,7 +93,7 @@ namespace AzureSearch.suites.AzureSearch
                 // Split by individual keys
                 .Split(",", StringSplitOptions.RemoveEmptyEntries)
                 // Split key/values
-                .Select(f => f.Split("_", StringSplitOptions.RemoveEmptyEntries))
+                .Select(f => f.Split("__", StringSplitOptions.RemoveEmptyEntries))
                 // Group by keys
                 .GroupBy(f => f[0])
                 // Select grouped key/values into SearchFacet array
@@ -106,7 +106,8 @@ namespace AzureSearch.suites.AzureSearch
                 searchFacets = searchFacets,
                 currentPage = page,
                 isProperty = isProperty,
-                IsMongo = isMongoIndex
+                IsMongo = isMongoIndex,
+                IsGlobal=globalIndex
             });
           
            
@@ -153,6 +154,11 @@ namespace AzureSearch.suites.AzureSearch
                 var details = GetCasesDetails(viewModel);
                 viewModel.EntityDetails = details.ToArray().GroupBy(s => s.case_id).Select(s => s.First()).ToList();
             }
+            else if (searchParams.IsGlobal)
+            {
+                var details = GetEntityDetails(viewModel);
+                viewModel.EntityDetails = details.ToArray().GroupBy(s => s.uniqueid).Select(s => s.First()).ToList();
+            }
             else 
             {
                 var details = GetEntityDetails(viewModel);
@@ -176,8 +182,7 @@ namespace AzureSearch.suites.AzureSearch
                               case_type = o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "CASE_TYPE").Select(s => s.Value).FirstOrDefault().ToString(),
 
-
-                              case_status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
+                             case_status = o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault() == null ? ""
                                         : o.Document.Where(s => s.Key == "CASE_STATUS").Select(s => s.Value).FirstOrDefault().ToString(),
 
                               creation_reason = o.Document.Where(s => s.Key == "CREATION_REASON").Select(s => s.Value).FirstOrDefault() == null ? ""
@@ -283,8 +288,11 @@ namespace AzureSearch.suites.AzureSearch
         /// <param name="term"></param>
         /// <param name="fuzzy"></param>
         /// <returns></returns>
-        public List<string> SuggestEntity(string term, bool fuzzy = true)
+        public List<string> SuggestEntity(string term, bool fuzzy = true,bool isglobal=false)
         {
+            string indexName = isglobal==false ? _configuration.GetSection("EntitySearchIndexName")?.Value           
+           : _configuration.GetSection("GlobalSearchIndexName")?.Value;
+            _docSearch = new DocumentSearchClient(_configuration, indexName);
             // Change to _docSearch.Suggest if you would prefer to have suggestions instead of auto-completion
             //var response = _docSearch.Autocomplete(term, fuzzy);
             var response = _docSearch.Suggest(term, fuzzy);
@@ -333,7 +341,9 @@ namespace AzureSearch.suites.AzureSearch
 
             public bool isProperty { get; set; }
 
-            public bool IsMongo { get; set; }
+            public bool IsMongo { get; set;}
+
+            public bool IsGlobal { get; set; }
         }
 
         public async Task<List<EntityDetailsDto>> GetDetailsByentityKey(int entitykey, bool IsMongo=false)
@@ -357,14 +367,14 @@ namespace AzureSearch.suites.AzureSearch
 
                 EntityDetailsDto objEntity = new EntityDetailsDto();
 
-                var details =  new EntityDetailsDto()
-                              {
-                                   case_status = document.GetValue("CASE_STATUS").ToString(),
-                                   case_type = document.GetValue("CASE_TYPE").ToString(),
-                                   case_id = document.GetValue("CASE_ID").ToInt32(),
-                                   source = document.GetValue("source").ToString()
-                              }
-                ;
+                var details = new EntityDetailsDto()
+                {
+                    case_status = document.GetValue("CASE_STATUS").ToString(),
+                    case_type = document.GetValue("CASE_TYPE").ToString(),
+                    case_id = document.GetValue("CASE_ID").ToInt32(),
+                    creation_reason = document.GetValue("CREATION_REASON").ToString(),
+                    source = document.GetValue("source").ToString()
+                };
                 if(details != null)
                 {
                     result.Add(details);
